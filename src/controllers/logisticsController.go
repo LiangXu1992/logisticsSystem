@@ -30,7 +30,6 @@ func LogisticsLogin(c *gin.Context) {
     logistics.Client_type    = c.PostForm("client")
     logistics.App_token      = c.Request.Header.Get("devToken")
 
-    fmt.Println(logistics)
     //参数是否为空
     if common.IsNull([]string{logistics.Logistics_name, logistics.Password, logistics.Client_type}) {
         c.JSON(http.StatusOK, gin.H{

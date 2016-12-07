@@ -1,8 +1,8 @@
 package databases
 
 import (
+    "database/sql"
     _ "github.com/go-sql-driver/mysql"
-    "github.com/jinzhu/gorm"
     "log"
 )
 
@@ -29,14 +29,20 @@ var mysql = DatabaseConfig{
 
 //定义数据库连接对象
 type Conn struct {
-    DB *gorm.DB
+    DB *sql.DB
 }
 
 //初始化连接数据库
 func (c *Conn) InitDB() {
     var err error
-    c.DB, err = gorm.Open(mysql.driver, mysql.user + ":" + mysql.passWord + "@tcp(" + mysql.host + mysql.port + ")/"+ mysql.dbName +"?charset=utf8&parseTime=True&loc=Local")
+    c.DB, err = sql.Open(mysql.driver, mysql.user + ":" + mysql.passWord + "@tcp(" + mysql.host + mysql.port + ")/"+ mysql.dbName +"?charset=utf8&parseTime=True&loc=Local")
     if err != nil {
         log.Fatalf("Got error when connect database, the error is '%v'", err)
+    }
+    //defer c.DB.Close()
+
+    err = c.DB.Ping()
+    if err != nil {
+        log.Fatal(err)
     }
 }

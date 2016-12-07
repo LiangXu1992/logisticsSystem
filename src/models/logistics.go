@@ -2,11 +2,15 @@ package models
 
 import (
     "databases"
-    "common"
-    "time"
-    "strconv"
+    //"common"
+    //"time"
+    //"strconv"
     "fmt"
 
+    "common"
+    "log"
+    "strconv"
+    "time"
 )
 
 //连接数据库
@@ -35,7 +39,11 @@ type Shop_v_dispatch struct {
 
 func (l *Shop_logistics)GetLogisticsInfo() {
     //查找物流员的信息
-    conn.DB.Raw("SELECT logistics_id, token FROM shop_logistics where logistics_name = ? AND logistics_pwd = ?", l.Logistics_name, common.STMd5(l.Password)).Scan(l)
+    err := conn.DB.QueryRow("SELECT logistics_id, token FROM shop_logistics where logistics_name = ? AND logistics_pwd = ?", l.Logistics_name, common.STMd5(l.Password)).Scan(&l.Logistics_id, &l.Token)
+    if err != nil {
+        log.Fatalf("Query logistics error %v", err)
+    }
+
     //更新token，apptoken
     l.UpdateToken()
 }
@@ -44,15 +52,27 @@ func (l *Shop_logistics)UpdateToken() {
     //更新物流员登录token
     randomInt := strconv.FormatInt(time.Now().Unix(), 10) + common.RandNum()                   //randomInt由时间戳和一个随机数组成的一个int
     randomStr := l.Logistics_name + randomInt                                                  //物流员名字加上随机int产生的一个str
-    conn.DB.Model(l).Update(Shop_logistics{Token: common.STMd5(randomStr), Login_time: int(time.Now().Unix())})
+    stmp, err := conn.DB.Prepare("UPDATE shop_logistics set token = ?,login_time = ? WHERE logistics_id = ?")
+    if err != nil {
+        log.Fatalf("Build update token prepare token err %v", err)
+    }
+    res, err := stmp.Exec(common.STMd5(randomStr), int(time.Now().Unix()), l.Logistics_id)
+    if err != nil {
+        log.Fatalf("Exec update token sql err %v", err)
+    }
+    rowCnt, err := res.RowsAffected()
+    lastId, err := res.LastInsertId()
+    if(rowCnt != 1 || err != nil) {
+        log.Fatalf("Affect row not only one, %v", err)
+    }
 
     //更新物流员推送token
-    fmt.Println("s")
+    fmt.Println(lastId)
 }
 
 //判断是否登录
 func (l *Shop_logistics)IsLogin() {
-    conn.DB.Where("token = ?", l.Token).First(l)
+    //conn.DB.Where("token = ?", l.Token).First(l)
 }
 
 func (d *Shop_v_dispatch) GetDispatchList(l *Shop_logistics) {
@@ -65,7 +85,7 @@ func (d *Shop_v_dispatch) GetDispatchList(l *Shop_logistics) {
     //    rows.Scan(&dispatch_id, d.Order_sn)
     //    fmt.Println(dispatch_id)
     //}
-    conn.DB.Find(d)
+    //conn.DB.Find(d)
     fmt.Println(d)
 
 
