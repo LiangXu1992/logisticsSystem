@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"common"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"models"
 	"net/http"
+
 )
 
 //物流员默认api
@@ -23,7 +23,6 @@ func LogisticsLogin(c *gin.Context) {
 		Password:       c.PostForm("password"),
 		Client_type:    c.PostForm("client"),
 		App_token:      c.Request.Header.Get("devToken"),
-		Db:             c.Db,
 	}
 
 	//参数是否为空
@@ -36,50 +35,64 @@ func LogisticsLogin(c *gin.Context) {
 
 	//验证物流员信息并更新token，现在版本设置为单用户登录，另外一台设备登录会造成上一台掉线
 	//更新登录token，极光appToken
-	logistics.GetLogisticsInfo()
+	logistics.GetLogisticsInfo(c)
 	if logistics.Logistics_id == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "login err",
+            "code": 0,
+			"message": "username or passwd error",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":          200,
-		"logisticsInfo": logistics,
-	})
+	logistics.UpdateToken(c)
 
+    if logistics.Token == "" {
+        c.JSON(http.StatusOK, gin.H{
+            "code": 0,
+            "message": "login error",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "code":          200,
+        "logisticsInfo": logistics,
+    })
 }
 
 //物流员订单列表
 func LogisticsOrder(c *gin.Context) {
-	fmt.Println("a")
 	logistics := models.Shop_logistics{
-		Db: c.Db,
+        Token:c.Request.Header.Get("token"),
+
 	}
 	dispatch := models.Shop_v_dispatch{
-		Db: c.Db,
+
 	}
 
-	logistics.Token = c.Request.Header.Get("token")
 	//判断是否登录
-	str, err := logistics.IsLogin()
-	if err != nil {
+	logistics.IsLogin(c)
+	if logistics.Logistics_id == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"message": str,
+            "code" :0,
+			"message": "is not login",
 		})
 		return
 	}
 
 	//获取订单列表
-	dispatchList := dispatch.GetDispatchList(&logistics)
+	dispatchList, err := dispatch.GetDispatchList(c, &logistics)
+    if err != nil {
+        c.JSON(http.StatusOK, gin.H{
+            "code": 0,
+            "message": err,
+        })
+        return
+    }
+
 	c.JSON(http.StatusOK, gin.H{
+        "code":200,
 		"message": dispatchList,
-	})
-	return
-	fmt.Println("logistics order")
-	c.JSON(http.StatusOK, gin.H{
-		"message": "login err",
 	})
 	return
 }

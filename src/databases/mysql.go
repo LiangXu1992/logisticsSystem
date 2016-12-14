@@ -1,10 +1,12 @@
 package databases
 
 import (
-	"database/sql"
+
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
+
+    "github.com/jinzhu/gorm"
+    "fmt"
 )
 
 //定义数据库连接结构
@@ -30,14 +32,11 @@ var mysql = DatabaseConfig{
 //初始化连接数据库
 func InitDb(c *gin.Context) {
 	var err error
-	c.Db, err = sql.Open(mysql.driver, mysql.user+":"+mysql.passWord+"@tcp("+mysql.host+mysql.port+")/"+mysql.dbName+"?charset=utf8&parseTime=True&loc=Local")
-	if err != nil {
-		log.Fatalf("Got error when connect database, the error is '%v'", err)
-	}
-	err = c.Db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
+	c.Db, err = gorm.Open(mysql.driver, mysql.user+":"+mysql.passWord+"@tcp("+mysql.host+mysql.port+")/"+mysql.dbName+"?charset=utf8&parseTime=True&loc=Local")
+    if err != nil {
+        fmt.Println("mysql conn err")
+    }
+    c.Db.SingularTable(true)
 }
 
 func CloseDb(c *gin.Context) {
